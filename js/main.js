@@ -120,18 +120,15 @@ var selection_material = new THREE.MeshLambertMaterial({
     side: THREE.DoubleSide,
 });
 
-
-
-
 // store rendering mode RNA  
 var RNA_MODE = false; // By default we do DNA
-
 
 // add base index visualistion
 var backbones = []; 
 var nucleosides = [];
 var connectors = [];
 var selected_bases = {};
+
 
 document.addEventListener('mousedown', event => {
     // magic ... 
@@ -170,7 +167,7 @@ document.addEventListener('mousedown', event => {
 // adding mouse controll to the scene 
 //var orbit = new THREE.OrbitControls( camera, renderer.domElement );
 //orbit.addEventListener('change', render);
-controls = new THREE.TrackballControls( camera );
+controls = new THREE.TrackballControls( camera, renderer.domElement );
 controls.rotateSpeed = 1.5;
 controls.zoomSpeed = 1.5;
 controls.panSpeed = 1.0;
@@ -180,6 +177,16 @@ controls.staticMoving = true;
 controls.dynamicDampingFactor = 0.2;
 controls.keys = [ 65, 83, 68 ];
 controls.addEventListener( 'change', render );
+
+var gui = new dat.GUI({ autoPlace: false });
+var gui_container = document.getElementById('gui_container'); //gotta keep it contained because otherwise everything else gets gui
+gui_container.appendChild(gui.domElement);
+var controls_interface = gui.addFolder('Camera Controls');
+controls_interface.add(controls, 'rotateSpeed', 0, 5);
+controls_interface.add(controls, 'zoomSpeed', 0, 5);
+controls_interface.add(controls, 'panSpeed', 0, 5);
+controls_interface.add(controls, 'dynamicDampingFactor', 0, 5);
+
 
 // start animation cycle 
 animate();
@@ -197,6 +204,8 @@ function animate() {
     controls.update();
 
 }
+
+
 
 
 
