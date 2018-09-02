@@ -67,7 +67,7 @@ arrowHelper = new THREE.ArrowHelper(dir, origin, length, hex);
 arrowHelper.name = "z-axis";
 scene.add(arrowHelper); //add z-axis to scene
 function toggleArrows(chkBox) {
-    if (chkBox.checked) { //if checked, set all axes to visible
+    if (chkBox.checked) {
         let arrowHelper = scene.getObjectByName("x-axis");
         arrowHelper.visible = true;
         arrowHelper = scene.getObjectByName("y-axis");
@@ -75,7 +75,7 @@ function toggleArrows(chkBox) {
         arrowHelper = scene.getObjectByName("z-axis");
         arrowHelper.visible = true;
     }
-    else { //if not checked, set all axes to invisible
+    else {
         let arrowHelper = scene.getObjectByName("x-axis");
         arrowHelper.visible = false;
         arrowHelper = scene.getObjectByName("y-axis");

@@ -101,6 +101,106 @@ var backbones = [];
 let lut, devs; //need for Lut coloring
 let lutCols = [];
 let lutColsVis = false;
+var load_btn = document.getElementById("load-btn");
+load_btn.addEventListener("click", function (event) {
+    event.preventDefault();
+    //make system to store the dropped files in
+    var system = new System(sys_count, nucleotides.length);
+    var i = 0;
+    var strand_to_material = {};
+    var base_to_material = {};
+    var base_to_num = {
+        "A": 0,
+        "G": 1,
+        "C": 2,
+        "T": 3,
+        "U": 3
+    };
+    let top_reader = new FileReader();
+    top_reader.onload = () => {
+        // make first strand
+        var current_strand = new Strand(1, system);
+        let nuc_local_id = 0;
+        let last_strand = 1; //strands are 1-indexed in oxDNA .top files
+        let last_nuc;
+        let neighbor3;
+        // parse file into lines
+        var lines = top_reader.result.split(/[\r\n]+/g);
+        lines = lines.slice(1); // discard the header  
+        lines.forEach((line, i) => {
+            if (line == "") {
+                return;
+            }
+            ;
+            let l = line.split(" "); //split the file and read each column
+            let id = parseInt(l[0]); // get the strand id
+            if (id != last_strand) {
+                current_strand = new Strand(id, system);
+                nuc_local_id = 0;
+                last_nuc = null;
+            }
+            ;
+            let base = l[1]; // get base id
+            //if we meet a U, we have an RNA (its dumb, but its all we got)
+            if (base === "U") {
+                RNA_MODE = true;
+            }
+            neighbor3 = last_nuc;
+            let nuc = new Nucleotide(nuc_count, nuc_local_id, neighbor3, base, id, system.system_id); //create nucleotide
+            if (nuc.neighbor3 != null) {
+                nuc.neighbor3.neighbor5 = nuc;
+            }
+            ;
+            current_strand.add_nucleotide(nuc); //add nuc into Strand object
+            nucleotides.push(nuc); //add nuc to global nucleotides array
+            nuc_count += 1;
+            nuc_local_id += 1;
+            last_strand = id;
+            last_nuc = nuc;
+            if (parseInt(l[3]) == -1) {
+                system.add_strand(current_strand);
+            }
+            ;
+            // create a lookup for
+            // coloring base according to base id
+            base_to_material[i] = nucleoside_materials[base_to_num[base]];
+            // coloring bases according to strand id 
+            strand_to_material[i] = backbone_materials[Math.floor(id % backbone_materials.length)]; //i = nucleotide id in system but not = global id b/c global id takes all systems into account
+        });
+        for (let i = system.global_start_id; i < nucleotides.length; i++) {
+            selected_bases.push(0);
+        }
+        system.setBaseMaterial(base_to_material); //store this system's base 
+        system.setStrandMaterial(strand_to_material); //and strand coloring in current System object
+        system.setDatFile(dat_file); //store dat_file in current System object
+        systems.push(system); //add system to Systems[]
+    };
+    // read a configuration file 
+    var x_bb_last, //last backbone positions
+    y_bb_last, z_bb_last;
+    //read .dat
+    let dat_reader = new FileReader();
+    dat_reader.onload = () => {
+        readDat(/*datnum,*/ system.system_length(), dat_reader, strand_to_material, base_to_material, system, 2, x_bb_last, y_bb_last, z_bb_last);
+        render();
+    };
+    var top_xhr = new XMLHttpRequest();
+    top_xhr.open("GET", "/jobs/10524361615b7d15ca595d73.12792629/centerline.dat.top");
+    top_xhr.responseType = "blob";
+    top_xhr.onload = () => {
+        var top_blob = top_xhr.response;
+        top_reader.readAsText(top_blob);
+        var conf_xhr = new XMLHttpRequest();
+        conf_xhr.open("GET", "/jobs/10524361615b7d15ca595d73.12792629/centerline.dat.oxdna");
+        conf_xhr.responseType = "blob";
+        conf_xhr.onload = () => {
+            var conf_blob = conf_xhr.response;
+            dat_reader.readAsText(conf_blob);
+        };
+        conf_xhr.send();
+    };
+    top_xhr.send();
+}, false);
 // define the drag and drop behavior of the scene 
 var target = renderer.domElement;
 target.addEventListener("dragover", function (event) {
@@ -201,7 +301,7 @@ target.addEventListener("drop", function (event) {
             ;
             let l = line.split(" "); //split the file and read each column
             let id = parseInt(l[0]); // get the strand id
-            if (id != last_strand) { //if new strand id, make new strand
+            if (id != last_strand) {
                 current_strand = new Strand(id, system);
                 nuc_local_id = 0;
                 last_nuc = null;
@@ -214,7 +314,7 @@ target.addEventListener("drop", function (event) {
             }
             neighbor3 = last_nuc;
             let nuc = new Nucleotide(nuc_count, nuc_local_id, neighbor3, base, id, system.system_id); //create nucleotide
-            if (nuc.neighbor3 != null) { //link the previous one to it
+            if (nuc.neighbor3 != null) {
                 nuc.neighbor3.neighbor5 = nuc;
             }
             ;
@@ -224,7 +324,7 @@ target.addEventListener("drop", function (event) {
             nuc_local_id += 1;
             last_strand = id;
             last_nuc = nuc;
-            if (parseInt(l[3]) == -1) { //if its the end of a strand, add it to current system
+            if (parseInt(l[3]) == -1) {
                 system.add_strand(current_strand);
             }
             ;
@@ -234,7 +334,7 @@ target.addEventListener("drop", function (event) {
             // coloring bases according to strand id 
             strand_to_material[i] = backbone_materials[Math.floor(id % backbone_materials.length)]; //i = nucleotide id in system but not = global id b/c global id takes all systems into account
         });
-        for (let i = system.global_start_id; i < nucleotides.length; i++) { //set selected_bases[] to 0 for nucleotides[]-system start
+        for (let i = system.global_start_id; i < nucleotides.length; i++) {
             selected_bases.push(0);
         }
         system.setBaseMaterial(base_to_material); //store this system's base 
@@ -243,12 +343,12 @@ target.addEventListener("drop", function (event) {
         systems.push(system); //add system to Systems[]
     };
     top_reader.readAsText(top_file);
-    if (files_len == 3) { //if dropped 3 files = also included .json
+    if (files_len == 3) {
         let json_reader = new FileReader(); //read .json
         json_reader.onload = () => {
             let lines = json_reader.result.split(", ");
             devs = [];
-            if (lines.length == system.system_length()) { //if json and dat files match/same length
+            if (lines.length == system.system_length()) {
                 for (let i = 0; i < lines.length; i++) {
                     devs.push(parseFloat(lines[i])); //insert numbers from json file into devs[]
                 }
@@ -261,12 +361,12 @@ target.addEventListener("drop", function (event) {
                 scene.add(legend);
                 let labels = lut.setLegendLabels({ 'title': 'Number', 'um': 'id', 'ticks': 5, 'position': { 'x': 0, 'y': 10, 'z': 0 } }); //set up legend format
                 scene.add(labels['title']); //add title
-                for (let i = 0; i < Object.keys(labels['ticks']).length; i++) { //add tick marks
+                for (let i = 0; i < Object.keys(labels['ticks']).length; i++) {
                     scene.add(labels['ticks'][i]);
                     scene.add(labels['lines'][i]);
                 }
             }
-            else { //if json and dat files do not match, display error message and set files_len to 2 (not necessary)
+            else {
                 alert(".json and .top files are not compatible.");
                 files_len = 2;
             }
@@ -287,8 +387,8 @@ target.addEventListener("drop", function (event) {
     }
     //Lut coloring - colors nucleotides based on flexibility during oxDNA simulation run
     //doesn't work for more than one system
-    if (files_len == 1) { //if .json dropped after .dat and .top
-        if (files[0].name.slice(-4) == "json") { //if actually a .json file
+    if (files_len == 1) {
+        if (files[0].name.slice(-4) == "json") {
             json_file = files[0];
             let json_reader = new FileReader();
             json_reader.onload = () => {
@@ -307,11 +407,11 @@ target.addEventListener("drop", function (event) {
                     scene.add(legend);
                     let labels = lut.setLegendLabels({ 'title': 'Number', 'um': 'id', 'ticks': 5, 'position': { 'x': 0, 'y': 10, 'z': 0 } }); //create legend formatting
                     scene.add(labels['title']); //add title
-                    for (let i = 0; i < Object.keys(labels['ticks']).length; i++) { //add tick marks
+                    for (let i = 0; i < Object.keys(labels['ticks']).length; i++) {
                         scene.add(labels['ticks'][i]);
                         scene.add(labels['lines'][i]);
                     }
-                    for (let i = 0; i < nucleotides.length; i++) { //insert lut colors into lutCols[] to toggle Lut coloring later
+                    for (let i = 0; i < nucleotides.length; i++) {
                         lutCols.push(lut.getColor(devs[i]));
                     }
                     render();
@@ -349,7 +449,7 @@ function readDat(/*datnum, */ datlen, dat_reader, strand_to_material, base_to_ma
     let arb = 0;
     let trajlen = (datnum + 1) * datlen; //end of current configuration's list of positions
     // add the bases to the scene
-    for (let i = datnum * datlen; i < trajlen; i++) { //from beginning to end of current configuration's list of positions; for each nucleotide in the system
+    for (let i = datnum * datlen; i < trajlen; i++) {
         if (lines[i] == "") {
             return;
         }
@@ -387,7 +487,7 @@ function readDat(/*datnum, */ datlen, dat_reader, strand_to_material, base_to_ma
         let x_bb = 0;
         let y_bb = 0;
         let z_bb = 0;
-        if (!RNA_MODE) { //calculations for DNA
+        if (!RNA_MODE) {
             x_bb = x - (0.34 * x_a1 + 0.3408 * x_a2),
                 y_bb = y - (0.34 * y_a1 + 0.3408 * y_a2),
                 z_bb = z - (0.34 * z_a1 + 0.3408 * z_a2);
@@ -464,7 +564,7 @@ function readDat(/*datnum, */ datlen, dat_reader, strand_to_material, base_to_ma
         x_bb_last = x_bb;
         y_bb_last = y_bb;
         z_bb_last = z_bb;
-        if (current_nucleotide.neighbor5 == null) { //if last nucleotide in strand
+        if (current_nucleotide.neighbor5 == null) {
             system.system_3objects.add(current_strand.strand_3objects); //add strand THREE.Group to system THREE.Group
             current_strand = system.strands[current_strand.strand_id]; //don't ask, its another artifact of strands being 1-indexed
             nuc_local_id = 0;
@@ -478,11 +578,11 @@ function readDat(/*datnum, */ datlen, dat_reader, strand_to_material, base_to_ma
     datnum++; //configuration # - currently only works for 1 system
     let dx, dy, dz;
     //bring strand in box
-    for (let i = 0; i < systems[sys_count].strands.length; i++) { //for each strand in current system
+    for (let i = 0; i < systems[sys_count].strands.length; i++) {
         // compute offset to bring strand in box
         let n = systems[sys_count].strands[i].nucleotides.length; //strand's nucleotides[] length
         let cms = new THREE.Vector3(0, 0, 0); //center of mass
-        for (let j = 0; j < n; j++) { //for every nuc in strand
+        for (let j = 0; j < n; j++) {
             cms.add(systems[sys_count].strands[i].nucleotides[j].visual_object.children[3].position); //sum center of masses - children[3] = posObj Mesh at cms
         }
         //cms calculations
@@ -493,8 +593,8 @@ function readDat(/*datnum, */ datlen, dat_reader, strand_to_material, base_to_ma
         dz = Math.round(cms.z / box) * box;
         //fix coordinates
         let temp = new THREE.Vector3();
-        for (let j = 0; j < systems[sys_count].strands[i].nucleotides.length; j++) { //for every nucleotide in strand
-            for (let k = 0; k < systems[sys_count].strands[i].nucleotides[j].visual_object.children.length; k++) { //for every Mesh in nucleotide's visual_object
+        for (let j = 0; j < systems[sys_count].strands[i].nucleotides.length; j++) {
+            for (let k = 0; k < systems[sys_count].strands[i].nucleotides[j].visual_object.children.length; k++) {
                 let pos = systems[sys_count].strands[i].nucleotides[j].visual_object.children[k].position; //get Mesh position
                 //update pos by offset <dx, dy, dz>
                 pos.x = pos.x - dx;
@@ -521,13 +621,6 @@ function readDat(/*datnum, */ datlen, dat_reader, strand_to_material, base_to_ma
     systems[sys_count].CoM = cms; //because system com may be useful to know */
     scene.add(systems[sys_count].system_3objects); //add system_3objects with strand_3objects with visual_object with Meshes
     sys_count += 1;
-    //radio button/checkbox selections
-    getActionMode();
-    getScopeMode();
-    getAxisMode();
-    if (actionMode.includes("Drag")) {
-        drag();
-    }
     /*  let geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
      let material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
      let cube = new THREE.Mesh(geometry, material);
@@ -541,21 +634,18 @@ function readDat(/*datnum, */ datlen, dat_reader, strand_to_material, base_to_ma
     // update the scene
     render();
     //updatePos(sys_count - 1); //sets positions of system, strands, and visual objects to be located at their cms - messes up rotation sp recalculation and trajectory
-    for (let i = 0; i < nucleotides.length; i++) { //create array of backbone sphere Meshes for base_selector
-        backbones.push(nucleotides[i].visual_object.children[0]);
-    }
     //render();
 }
 let x_bb_last, y_bb_last, z_bb_last; //last nucleotide's backbone positions
 function nextConfig() {
-    for (let i = 0; i < systems.length; i++) { //for each system - does not actually work for multiple systems
+    for (let i = 0; i < systems.length; i++) {
         let system = systems[i];
         let datlen = system.system_length(); //gets # of nuc in system
         let nuc_local_id = 0;
         let current_strand = systems[i].strands[0];
         let len = datnum * datlen + 3 * datnum; //gets start position of nuc position data in .dat file
         //get the simulation box size 
-        if (len < trajlines.length) { //for all nuc position data of current configuration
+        if (len < trajlines.length) {
             console.log(datlen); //troubleshooting
             console.log(datnum);
             console.log(len);
@@ -600,7 +690,7 @@ function nextConfig() {
                 let x_bb = 0;
                 let y_bb = 0;
                 let z_bb = 0;
-                if (!RNA_MODE) { //calculations for DNA
+                if (!RNA_MODE) {
                     x_bb = x - (0.34 * x_a1 + 0.3408 * x_a2),
                         y_bb = y - (0.34 * y_a1 + 0.3408 * y_a2),
                         z_bb = z - (0.34 * z_a1 + 0.3408 * z_a2);
@@ -678,11 +768,11 @@ function nextConfig() {
                 render();
                 //box by strand
                 let dx, dy, dz;
-                for (let j = 0; j < systems[i].strands.length; j++) { //for each strand in system
+                for (let j = 0; j < systems[i].strands.length; j++) {
                     // compute offset to bring strand in box
                     let n = systems[i].strands[j].nucleotides.length; //# of nucleotides on strand
                     let cms = new THREE.Vector3(0, 0, 0);
-                    for (let k = 0; k < n; k++) { //sum cms of each visual_object in strand; stored in children[3] = posObj Mesh 
+                    for (let k = 0; k < n; k++) {
                         cms.add(systems[i].strands[j].nucleotides[k].visual_object.children[3].position);
                     }
                     //calculate cms
@@ -693,8 +783,8 @@ function nextConfig() {
                     dz = Math.round(cms.z / box) * box;
                     //fix coordinates
                     let temp = new THREE.Vector3();
-                    for (let k = 0; k < systems[i].strands[j].nucleotides.length; k++) { //for each nucleotide in strand
-                        for (let l = 0; l < systems[i].strands[j].nucleotides[k].visual_object.children.length; l++) { //for each Mesh in nucleotide's visual_object
+                    for (let k = 0; k < systems[i].strands[j].nucleotides.length; k++) {
+                        for (let l = 0; l < systems[i].strands[j].nucleotides[k].visual_object.children.length; l++) {
                             let pos = systems[i].strands[j].nucleotides[k].visual_object.children[l].position; //get Mesh position
                             //calculate new positions by offset
                             pos.x = pos.x - dx;
@@ -715,13 +805,13 @@ function nextConfig() {
     }
 }
 function updatePos(sys_count) {
-    for (let h = sys_count; h < sys_count + 1; h++) { //for current system
+    for (let h = sys_count; h < sys_count + 1; h++) {
         let cmssys = new THREE.Vector3(); //system cms
         let n = systems[h].system_length(); //# of nucleotides in system
-        for (let i = 0; i < systems[h].system_3objects.children.length; i++) { //for each strand
+        for (let i = 0; i < systems[h].system_3objects.children.length; i++) {
             let n1 = systems[h].system_3objects.children[i].children.length; //for strand_3objects in system_3objects
             let cms = new THREE.Vector3(); //strand cms
-            for (let j = 0; j < n1; j++) { //for each visual_object
+            for (let j = 0; j < n1; j++) {
                 let rotobj = systems[h].system_3objects.children[i].children[j]; //current nuc's visual_object
                 let n2 = rotobj.children.length; //# of Meshes in visual_object/rot obj
                 let cms1 = new THREE.Vector3(); //group cms
@@ -731,7 +821,7 @@ function updatePos(sys_count) {
                 cms1 = rotobj.children[3].position; //rotobj cms
                 let cmsx = cms1.x, cmsy = cms1.y, cmsz = cms1.z;
                 cmssys.add(rotobj.children[3].position); //system cms
-                for (let k = 0; k < n2; k++) { //for all Meshes in rotobj/visual_object translate by -cms1
+                for (let k = 0; k < n2; k++) {
                     rotobj.children[k].applyMatrix(new THREE.Matrix4().makeTranslation(-cmsx, -cmsy, -cmsz));
                 }
                 rotobj.position.set(0, 0, 0);
@@ -740,7 +830,7 @@ function updatePos(sys_count) {
             //calculate strand cms
             let mul = 1.0 / n1;
             cms.multiplyScalar(mul);
-            for (let k = 0; k < n1; k++) { //for each nucleotide in strand, translate by -cms
+            for (let k = 0; k < n1; k++) {
                 systems[h].strands[i].strand_3objects.children[k].applyMatrix(new THREE.Matrix4().makeTranslation(-cms.x, -cms.y, -cms.z));
             }
             systems[h].strands[i].strand_3objects.position.set(0, 0, 0);
@@ -749,7 +839,7 @@ function updatePos(sys_count) {
         //calculate system cms
         let mul = 1.0 / n;
         cmssys.multiplyScalar(mul);
-        for (let k = 0; k < systems[h].system_3objects.children.length; k++) { //for each strand, translate by -cmssys
+        for (let k = 0; k < systems[h].system_3objects.children.length; k++) {
             systems[h].system_3objects.children[k].applyMatrix(new THREE.Matrix4().makeTranslation(-cmssys.x, -cmssys.y, -cmssys.z));
         }
         systems[h].system_3objects.position.set(0, 0, 0);
@@ -757,16 +847,16 @@ function updatePos(sys_count) {
     }
 }
 function toggleLut(chkBox) {
-    if (lutCols.length > 0) { //lutCols stores each nucleotide's color (determined by flexibility)
-        if (lutColsVis) { //if "Display Flexibility" checkbox selected (currently displaying coloring) - does not actually get checkbox value; at onload of webpage is false and every time checkbox is changed, it switches boolean
-            for (let i = 0; i < nucleotides.length; i++) { //for all nucleotides in all systems - does not work for more than one system
+    if (lutCols.length > 0) {
+        if (lutColsVis) {
+            for (let i = 0; i < nucleotides.length; i++) {
                 let sysID = nucleotides[i].my_system;
                 let back_Mesh = nucleotides[i].visual_object.children[0]; //backbone
                 let nuc_Mesh = nucleotides[i].visual_object.children[1]; //nucleoside
                 let con_Mesh = nucleotides[i].visual_object.children[2]; //backbone nucleoside connector; cms posObj Mesh does not have a shape or color, etc.
                 let sp_Mesh = nucleotides[i].visual_object.children[4]; //sugar phosphate connector
-                if (back_Mesh instanceof THREE.Mesh) { //needed because Object3D "may not be" THREE.Mesh
-                    if (back_Mesh.material instanceof THREE.MeshLambertMaterial) { //needed because Mesh.material "may not be" MeshLambertMaterial
+                if (back_Mesh instanceof THREE.Mesh) {
+                    if (back_Mesh.material instanceof THREE.MeshLambertMaterial) {
                         back_Mesh.material = (systems[sysID].strand_to_material[nucleotides[i].global_id]); //set material to material stored earlier based on strandID
                     }
                 }
@@ -789,15 +879,15 @@ function toggleLut(chkBox) {
             lutColsVis = false; //now flexibility coloring is not being displayed and checkbox is not selected
         }
         else {
-            for (let i = 0; i < nucleotides.length; i++) { //for each nucleotide in all systems - does not work for multiple systems yet
+            for (let i = 0; i < nucleotides.length; i++) {
                 let tmeshlamb = new THREE.MeshLambertMaterial({
                     color: lutCols[i],
                     side: THREE.DoubleSide
                 });
-                for (let j = 0; j < nucleotides[i].visual_object.children.length; j++) { //for each Mesh in each nucleotide's visual_object
-                    if (j != 3) { //for all except cms posObj Mesh
+                for (let j = 0; j < nucleotides[i].visual_object.children.length; j++) {
+                    if (j != 3) {
                         let tmesh = nucleotides[i].visual_object.children[j];
-                        if (tmesh instanceof THREE.Mesh) { //needed because nucleotides[i].visual_object.children[j] "may not be" a Mesh
+                        if (tmesh instanceof THREE.Mesh) {
                             tmesh.material = tmeshlamb;
                         }
                     }
@@ -818,16 +908,16 @@ function cross(a1, a2, a3, b1, b2, b3) {
         a1 * b2 - a2 * b1];
 }
 function centerSystems() {
-    for (let i = 0; i < nucleotides.length; i++) { //for each nucleotide in all systems, set pos variable - not updated by updatePos(), rotation, + drag features
+    for (let i = 0; i < nucleotides.length; i++) {
         nucleotides[i].pos.x = nucleotides[i].visual_object.position.x;
         nucleotides[i].pos.y = nucleotides[i].visual_object.position.y;
         nucleotides[i].pos.z = nucleotides[i].visual_object.position.z;
     }
     let cms = new THREE.Vector3;
     let n_nucleotides = 0;
-    for (let x = 0; x < systems.length; x++) { //for each system
-        for (let y = 0; y < systems[x].system_3objects.children.length; y++) { //for each strand_3objects
-            for (let z = 0; z < systems[x].system_3objects.children[y].children.length; z++) { //for each visual_object
+    for (let x = 0; x < systems.length; x++) {
+        for (let y = 0; y < systems[x].system_3objects.children.length; y++) {
+            for (let z = 0; z < systems[x].system_3objects.children[y].children.length; z++) {
                 let temp = new THREE.Vector3;
                 systems[x].system_3objects.children[y].children[z].getWorldPosition(temp); //get nucleotide's visual_object world position
                 cms.add(temp); //sum all visual_object cms
@@ -838,7 +928,7 @@ function centerSystems() {
     //calculate cms
     let mul = 1.0 / n_nucleotides;
     cms.multiplyScalar(mul);
-    for (let x = 0; x < systems.length; x++) { //for each system, translate system by -world cms
+    for (let x = 0; x < systems.length; x++) {
         let pos = systems[x].system_3objects.position;
         pos.set(pos.x - cms.x, pos.y - cms.y, pos.z - cms.z);
     }
@@ -846,7 +936,7 @@ function centerSystems() {
 }
 //strand delete testcode
 document.addEventListener("keypress", event => {
-    if (event.keyCode === 100) { //if p is pressed, delete first system's first strand
+    if (event.keyCode === 100) {
         systems[0].remove_strand(1);
         render();
     }

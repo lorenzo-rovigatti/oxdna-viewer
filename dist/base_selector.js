@@ -19,48 +19,48 @@ document.addEventListener('mousedown', event => {
         intersects = raycaster.intersectObjects(backbones);
         // make note of what's been clicked
         let nucleotideID;
-        if (intersects.length > 0) { //if something has been clicked / is in the intersects array / intersects array's length is above 0
-            if (scopeMode.includes("System")) { //if scope mode is system
+        if (intersects.length > 0) {
+            if (scopeMode.includes("System")) {
                 let sysID;
                 nucleotideID = parseInt(intersects[0].object.parent.name); //get selected nucleotide's global id
                 sysID = nucleotides[nucleotideID].my_system; //get selected nucleotide's system id
-                for (let i = 0; i < nucleotides.length; i++) { //for every nucleotide in world
-                    if (nucleotides[i].my_system == sysID) { //if nucleotide - x, for example, is in the selected nucleotide's system, toggle x
+                for (let i = 0; i < nucleotides.length; i++) {
+                    if (nucleotides[i].my_system == sysID) {
                         toggle(i, sysID);
                     }
                 }
             }
-            else if (scopeMode.includes("Strand")) { //if scope mode is strand
+            else if (scopeMode.includes("Strand")) {
                 let strandID, sysID;
                 nucleotideID = parseInt(intersects[0].object.parent.name); //get selected nucleotide's global id
                 strandID = nucleotides[nucleotideID].my_strand; //get selected nucleotide's strand id
                 sysID = nucleotides[nucleotideID].my_system; //get selected nucleotide's system id
-                for (let i = 0; i < nucleotides.length; i++) { //for every nucleotide in world
-                    if (nucleotides[i].my_system == sysID && nucleotides[i].my_strand == strandID) { //if nucleotide - x, for example, is in the selected nucleotide's system and strand, toggle x
+                for (let i = 0; i < nucleotides.length; i++) {
+                    if (nucleotides[i].my_system == sysID && nucleotides[i].my_strand == strandID) {
                         //let sysID = nucleotides[i].my_system;
                         toggle(i, sysID);
                     }
                 }
             }
-            else if (scopeMode.includes("Nuc")) { //if scope mode is nucleotide
+            else if (scopeMode.includes("Nuc")) {
                 nucleotideID = parseInt(intersects[0].object.parent.name); //get selected nucleotide's global id
                 let sysID = nucleotides[nucleotideID].my_system; //get selected nucleotide's system id
                 toggle(nucleotideID, sysID); //toggle selected nucleotide
             }
             render(); //update scene;
             listBases = ""; //reset list of selected bases
-            for (let x = 0; x < selected_bases.length; x++) { //for all nucleotides in system/selected_bases array
-                if (selected_bases[x] == 1) //if nucleotide is selected
+            for (let x = 0; x < selected_bases.length; x++) {
+                if (selected_bases[x] == 1)
                     listBases = listBases + x + "\n"; //add nucleotide's global id to listBases - list of selected bases
             }
             basesInfo = ""; //reset list of selected bases' info
             let sysPrint = [], strandPrint = [], sys, strand; //sysPrint - array of numbers with system ids that have been listed in basesInfo; strandPrint - array of numbers with strand ids that have been listed in basesInfo
-            for (let x = 0; x < selected_bases.length; x++) { //for every nucleotide in world / selected_bases array
-                if (selected_bases[x] == 1) { //if nucleotide is selected
+            for (let x = 0; x < selected_bases.length; x++) {
+                if (selected_bases[x] == 1) {
                     let temp = nucleotides[x]; //get Nucleotide object
                     sys = temp.my_system; //get nucleotide's system
                     strand = temp.my_strand - 1; //get nucleotide's strand
-                    if (sysPrint.indexOf(sys) < 0) { //if system id is not already in sysPrint array
+                    if (sysPrint.indexOf(sys) < 0) {
                         basesInfo += "SYSTEM:\n" + //add system's information to basesInfo
                             "System ID: " + sys + "\n" +
                             "# of Strands: " + systems[sys].strands.length + "\n" +
@@ -71,7 +71,7 @@ document.addEventListener('mousedown', event => {
                         sysPrint.push(sys); //add sys id to sysPrint array
                     }
                     let nucPrint = strandPrint.indexOf(strand) < 0;
-                    if (nucPrint) { //if strand id is not already in strandPrint array
+                    if (nucPrint) {
                         basesInfo += "STRAND:\n" + //add strand's information to basesInfo
                             "System ID: " + sys + "\n" +
                             "Strand ID: " + strand + "\n" +
@@ -81,7 +81,7 @@ document.addEventListener('mousedown', event => {
                             "z = " + systems[sys].strands[strand].strand_3objects.position.z + "\n\n";
                         strandPrint.push(strand); //add strand id to strandPrint array
                     }
-                    if (nucPrint || scopeMode.includes("Nuc")) { //if strand has not been added to basesInfo or scope mode is Nuc
+                    if (nucPrint || scopeMode.includes("Nuc")) {
                         basesInfo += "NUCLEOTIDE:\n" + //add nucleotide info to basesInfo
                             "Strand ID: " + strand + "\n" +
                             "Global ID: " + temp.global_id + "\n" +
@@ -101,19 +101,19 @@ function toggle(nucleotideID, sysID) {
     // highlight/remove highlight the bases we've clicked 
     let selected = false;
     let index = 0;
-    if (selected_bases[nucleotideID] == 1) { //if clicked nucleotide is selected, set selected boolean to true 
+    if (selected_bases[nucleotideID] == 1) {
         selected = true;
     }
     let back_Mesh = nucleotides[nucleotideID].visual_object.children[0]; //get clicked nucleotide's Meshes
     let nuc_Mesh = nucleotides[nucleotideID].visual_object.children[1];
     let con_Mesh = nucleotides[nucleotideID].visual_object.children[2];
     let sp_Mesh = nucleotides[nucleotideID].visual_object.children[4];
-    if (selected) { //if clicked nucleotide is already selected
+    if (selected) {
         // figure out what that base was before you painted it black and revert it
         let nuc = nucleotides[nucleotideID]; //get Nucleotide object
         let locstrandID = (nuc.my_strand - 1) * systems[sysID].strands[nuc.my_strand - 1].nucleotides.length + nuc.local_id; //get nucleotide's id with respect to its strand only
         //recalculate Mesh's proper coloring and set Mesh material on scene to proper material
-        if (back_Mesh instanceof THREE.Mesh) { //necessary for proper typing
+        if (back_Mesh instanceof THREE.Mesh) {
             if (back_Mesh.material instanceof THREE.MeshLambertMaterial) {
                 back_Mesh.material = (systems[sysID].strand_to_material[locstrandID]);
             }
@@ -168,7 +168,7 @@ function toggle(nucleotideID, sysID) {
 }
 function makeTextArea(bases, id) {
     let textArea = document.getElementById(id);
-    if (textArea !== null) { //as long as text area was retrieved by its ID, id
+    if (textArea !== null) {
         textArea.innerHTML = "Bases currently selected:\n" + bases; //set innerHTML / content to bases
     }
 }
@@ -182,11 +182,11 @@ function writeMutTrapText(base1, base2) {
 function makeMutualTrapFile() {
     let x, count = 0;
     let mutTrapText = "";
-    for (x = 0; x < selList.length; x = x + 2) { //for every selected nucleotide in listBases string
-        if (selList[x + 1] !== undefined) { //if there is another nucleotide in the pair
+    for (x = 0; x < selList.length; x = x + 2) {
+        if (selList[x + 1] !== undefined) {
             mutTrapText = mutTrapText + writeMutTrapText(selList[x], selList[x + 1]) + writeMutTrapText(selList[x + 1], selList[x]); //create mutual trap data for the 2 nucleotides in a pair - selected simultaneously
         }
-        else { //if there is no 2nd nucleotide in the pair
+        else {
             alert("The last selected base does not have a pair and thus cannot be included in the Mutual Trap File."); //give error message
         }
     }

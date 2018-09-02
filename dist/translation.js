@@ -5,16 +5,16 @@ function getActionMode() {
     // Get the checkbox
     actionMode = "";
     var checkBoxes = document.forms['Action'].elements['action']; //get checkboxes in form with id = 'Action' and checkboxes with name = 'action'
-    for (let i = 0, len = checkBoxes.length; i < len; i++) { //for each checkbox
-        if (checkBoxes[i].checked) { //if checkbox checked, add mode to actionMode string
+    for (let i = 0, len = checkBoxes.length; i < len; i++) {
+        if (checkBoxes[i].checked) {
             actionMode += checkBoxes[i].value;
         }
     }
 }
 function getScopeMode() {
     var modeRadioButtons = document.forms['Mode'].elements['mode']; //get radio buttons in form with id = 'Mode' and radio buttons with name = 'mode'
-    for (let i = 0, len = modeRadioButtons.length; i < len; i++) { //for each radio button
-        if (modeRadioButtons[i].checked) { //if radio button selected, set mode to scopeMode string
+    for (let i = 0, len = modeRadioButtons.length; i < len; i++) {
+        if (modeRadioButtons[i].checked) {
             scopeMode = modeRadioButtons[i].value;
             break;
         }
@@ -68,8 +68,8 @@ function getRotObj(i) {
 }
 function rotate(dir) {
     var rot = false; //rotation success boolean
-    for (let i = 0; i < selected_bases.length; i++) { //go through each nucleotide in all systems
-        if (selected_bases[i] == 1) { //if nucleotide is selected
+    for (let i = 0; i < selected_bases.length; i++) {
+        if (selected_bases[i] == 1) {
             let rotobj = getRotObj(i); //get object to rotate - nucleotide, strand, or system based on mode
             getAxisMode(); //get axis on which to rotate
             //rotate around user selected axis - default is X - and user entered angle - updated every time textarea is changed; default is 90
@@ -96,14 +96,14 @@ function rotate(dir) {
             }
         }
     }
-    if (!rot) { //if no object has been selected, rotation will not occur and error message displayed
+    if (!rot) {
         alert("Please select an object to rotate.");
     }
 }
 function getAxisMode() {
     var modeRadioButtons = document.forms['Axis'].elements['rotate']; //get radio buttons in form with id 'Axis' and radio buttons with name 'rotate'
-    for (let i = 0, len = modeRadioButtons.length; i < len; i++) { //for each radio button
-        if (modeRadioButtons[i].checked) { //if radio button is checked
+    for (let i = 0, len = modeRadioButtons.length; i < len; i++) {
+        if (modeRadioButtons[i].checked) {
             axisMode = modeRadioButtons[i].value; //set axisMode to radio button's value: X,Y, or Z
             break;
         }

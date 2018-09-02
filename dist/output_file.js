@@ -4,33 +4,33 @@ function makeOutputFiles() {
     let tot_nuc = 0; //total # of nucleotides
     let tot_strands = 0; //total # of strands
     let longest_strand_len = 0;
-    for (let i = 0; i < systems.length; i++) { //for each system
-        for (let j = 0; j < systems[i].strands.length; j++) { //for each strand in current system
+    for (let i = 0; i < systems.length; i++) {
+        for (let j = 0; j < systems[i].strands.length; j++) {
             tot_strands++;
             let strand_len = 0; //current strand length
-            for (let k = 0; k < systems[i].strands[j].nucleotides.length; k++) { //for each nucleotide in current strand
+            for (let k = 0; k < systems[i].strands[j].nucleotides.length; k++) {
                 tot_nuc++;
                 strand_len++;
             }
-            if (longest_strand_len < strand_len) //set longest_strand_len to largest strand length
+            if (longest_strand_len < strand_len)
                 longest_strand_len = strand_len;
         }
     }
     top = tot_nuc + " " + tot_strands + "\n";
-    for (let i = 0; i < nucleotides.length; i++) { //for each nucleotide in the system
+    for (let i = 0; i < nucleotides.length; i++) {
         top = top + (nucleotides[i].my_strand + 2 * nucleotides[i].my_system) + " " + nucleotides[i].type + " "; //strand id in global world + base type
         let neighbor3 = nucleotides[i].neighbor3;
         let neighbor5 = nucleotides[i].neighbor5;
-        if (neighbor3 === null || neighbor3 === undefined) { // if no neigbor3, neighbor3's global id = -1
+        if (neighbor3 === null || neighbor3 === undefined) {
             top = top + -1 + " ";
         }
-        else if (neighbor3 !== null) { //if neighbor3 exists, append neighbor3's global id
+        else if (neighbor3 !== null) {
             top = top + neighbor3.global_id + " ";
         }
-        if (neighbor5 === null || neighbor5 === undefined) { //if neighbor5 doesn't exist, append neighbor5's position = -1
+        if (neighbor5 === null || neighbor5 === undefined) {
             top = top + -1 + "\n";
         }
-        else { //if neighbor5 exists, append neighbor5's position
+        else {
             top = top + neighbor5.global_id + "\n";
         }
     }
@@ -38,7 +38,7 @@ function makeOutputFiles() {
     let box = 2 * longest_strand_len;
     dat = "t = 0\n" + "b = " + box + " " + box + " " + box
         + "\n" + "E = 0 0 0 " + dat_fileout + "\n";
-    for (let i = 0; i < nucleotides.length; i++) { //for all nucleotides
+    for (let i = 0; i < nucleotides.length; i++) {
         let nuc = nucleotides[i];
         nuc.visual_object.children[3].getWorldPosition(tempVec); //nucleotide's center of mass in world
         let x = tempVec.x;
@@ -66,12 +66,12 @@ function makeOutputFiles() {
         let x_a2;
         let y_a2;
         let z_a2;
-        if (RNA_MODE) { //if RNA
+        if (RNA_MODE) {
             x_a3 = ((x_bb - x) + (0.4 * x_a1)) / (-0.2);
             y_a3 = ((y_bb - y) + (0.4 * y_a1)) / (-0.2);
             z_a3 = ((z_bb - z) + (0.4 * z_a1)) / (-0.2);
         }
-        else { //if DNA
+        else {
             x_a2 = ((x_bb - x) + (0.34 * x_a1)) / (-0.3408);
             y_a2 = ((y_bb - y) + (0.34 * y_a1)) / (-0.3408);
             z_a2 = ((z_bb - z) + (0.34 * z_a1)) / (-0.3408);

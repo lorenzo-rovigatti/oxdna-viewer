@@ -128,6 +128,116 @@ let lut, devs: number[]; //need for Lut coloring
 let lutCols: THREE.Color[] = [];
 let lutColsVis: boolean = false;
 
+var load_btn = document.getElementById("load-btn");
+load_btn.addEventListener("click", function(event) {
+    event.preventDefault();
+    //make system to store the dropped files in
+    var system = new System(sys_count, nucleotides.length);
+
+    var i = 0;
+
+    var strand_to_material = {};
+    var base_to_material = {};
+    var base_to_num = {
+        "A": 0,
+        "G": 1,
+        "C": 2,
+        "T": 3,
+        "U": 3
+    };
+    
+    let top_reader = new FileReader();
+    top_reader.onload = () => {
+        // make first strand
+        var current_strand = new Strand(1, system);
+        let nuc_local_id: number = 0;
+        let last_strand: number = 1; //strands are 1-indexed in oxDNA .top files
+        let last_nuc: Nucleotide | null;
+        let neighbor3;
+        // parse file into lines
+        var lines = top_reader.result.split(/[\r\n]+/g);
+        lines = lines.slice(1); // discard the header  
+        lines.forEach(
+            (line, i) => {
+                if (line == "") { return };
+                let l = line.split(" "); //split the file and read each column
+                let id = parseInt(l[0]); // get the strand id
+                if (id != last_strand) { //if new strand id, make new strand
+                    current_strand = new Strand(id, system);
+                    nuc_local_id = 0;
+                    last_nuc = null;
+                };
+
+                let base = l[1]; // get base id
+                //if we meet a U, we have an RNA (its dumb, but its all we got)
+                if (base === "U") {
+                    RNA_MODE = true;
+                }
+
+                neighbor3 = last_nuc;
+
+                let nuc = new Nucleotide(nuc_count, nuc_local_id, neighbor3, base, id, system.system_id); //create nucleotide
+                if (nuc.neighbor3 != null) { //link the previous one to it
+                    nuc.neighbor3.neighbor5 = nuc;
+                };
+                current_strand.add_nucleotide(nuc); //add nuc into Strand object
+                nucleotides.push(nuc); //add nuc to global nucleotides array
+                nuc_count += 1;
+                nuc_local_id += 1;
+                last_strand = id;
+                last_nuc = nuc;
+
+                if (parseInt(l[3]) == -1) { //if its the end of a strand, add it to current system
+                    system.add_strand(current_strand);
+                };
+
+                // create a lookup for
+                // coloring base according to base id
+                base_to_material[i] = nucleoside_materials[base_to_num[base]];
+                // coloring bases according to strand id 
+                strand_to_material[i] = backbone_materials[Math.floor(id % backbone_materials.length)]; //i = nucleotide id in system but not = global id b/c global id takes all systems into account
+
+
+            });
+        for (let i = system.global_start_id; i < nucleotides.length; i++) { //set selected_bases[] to 0 for nucleotides[]-system start
+            selected_bases.push(0);
+        }
+        system.setBaseMaterial(base_to_material); //store this system's base 
+        system.setStrandMaterial(strand_to_material); //and strand coloring in current System object
+        system.setDatFile(dat_file); //store dat_file in current System object
+        systems.push(system); //add system to Systems[]
+    };
+    
+    // read a configuration file 
+    var x_bb_last, //last backbone positions
+        y_bb_last,
+        z_bb_last;
+    //read .dat
+    let dat_reader = new FileReader();
+    dat_reader.onload = () => {
+        readDat(/*datnum,*/ system.system_length(), dat_reader, strand_to_material, base_to_material, system, 2, x_bb_last, y_bb_last, z_bb_last);
+        render();
+    };
+    
+    var top_xhr = new XMLHttpRequest();
+    top_xhr.open("GET", "/jobs/10524361615b7d15ca595d73.12792629/centerline.dat.top");
+    top_xhr.responseType = "blob";
+    top_xhr.onload = () => {
+        var top_blob = top_xhr.response;
+        top_reader.readAsText(top_blob);
+        
+        var conf_xhr = new XMLHttpRequest();
+        conf_xhr.open("GET", "/jobs/10524361615b7d15ca595d73.12792629/centerline.dat.oxdna");
+        conf_xhr.responseType = "blob";
+        conf_xhr.onload = () => {
+            var conf_blob = conf_xhr.response;
+            dat_reader.readAsText(conf_blob);
+        }
+        conf_xhr.send();
+    }
+    top_xhr.send();
+}, false);
+
 // define the drag and drop behavior of the scene 
 var target = renderer.domElement;
 target.addEventListener("dragover", function (event) {
@@ -554,7 +664,7 @@ function readDat(/*datnum, */datlen, dat_reader, strand_to_material, base_to_mat
     }
     datnum++; //configuration # - currently only works for 1 system
     let dx, dy, dz;
-
+    
     //bring strand in box
     for (let i = 0; i < systems[sys_count].strands.length; i++) { //for each strand in current system
         // compute offset to bring strand in box
@@ -600,14 +710,7 @@ function readDat(/*datnum, */datlen, dat_reader, strand_to_material, base_to_mat
     systems[sys_count].CoM = cms; //because system com may be useful to know */
     scene.add(systems[sys_count].system_3objects); //add system_3objects with strand_3objects with visual_object with Meshes
     sys_count += 1;
-
-    //radio button/checkbox selections
-    getActionMode();
-    getScopeMode();
-    getAxisMode();
-    if (actionMode.includes("Drag")) {
-        drag();
-    }
+    
     /*  let geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
      let material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
      let cube = new THREE.Mesh(geometry, material);
@@ -621,9 +724,6 @@ function readDat(/*datnum, */datlen, dat_reader, strand_to_material, base_to_mat
     // update the scene
     render();
     //updatePos(sys_count - 1); //sets positions of system, strands, and visual objects to be located at their cms - messes up rotation sp recalculation and trajectory
-    for (let i = 0; i < nucleotides.length; i++) { //create array of backbone sphere Meshes for base_selector
-        backbones.push(nucleotides[i].visual_object.children[0]);
-    }
     //render();
 }
 
