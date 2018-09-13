@@ -184,14 +184,17 @@ load_btn.addEventListener("click", function (event) {
         readDat(/*datnum,*/ system.system_length(), dat_reader, strand_to_material, base_to_material, system, 2, x_bb_last, y_bb_last, z_bb_last);
         render();
     };
+    var url = new URL(window.location.href);
+    var topology_file = url.searchParams.get("topology") || '';
     var top_xhr = new XMLHttpRequest();
-    top_xhr.open("GET", "/jobs/10524361615b7d15ca595d73.12792629/centerline.dat.top");
+    top_xhr.open("GET", topology_file);
     top_xhr.responseType = "blob";
     top_xhr.onload = () => {
         var top_blob = top_xhr.response;
         top_reader.readAsText(top_blob);
+        var configuration_file = url.searchParams.get("configuration") || '';
         var conf_xhr = new XMLHttpRequest();
-        conf_xhr.open("GET", "/jobs/10524361615b7d15ca595d73.12792629/centerline.dat.oxdna");
+        conf_xhr.open("GET", configuration_file);
         conf_xhr.responseType = "blob";
         conf_xhr.onload = () => {
             var conf_blob = conf_xhr.response;
